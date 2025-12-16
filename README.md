@@ -1,7 +1,7 @@
 # 清图 (PhotoCleaner)
 
 <p align="center">
-  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="App Icon" width="120" />
+  <img src="app/src/main/ic_launcher-playstore.png" alt="App Icon" width="120" />
 </p>
 
 <p align="center">
@@ -60,11 +60,10 @@
 
 ## 📸 截图 (Screenshots)
 
-*(在此处添加应用截图，例如：主界面、回收站、关于页面)*
 
-| 主界面 | 回收站 | 关于页面 |
+| 主界面 | 待删除 | 关于页面 |
 |:---:|:---:|:---:|
-| <img src="" alt="Main" width="200"/> | <img src="" alt="Trash" width="200"/> | <img src="" alt="About" width="200"/> |
+| <img src="screenshots/main_screen.png" alt="Main" width="200"/> | <img src="screenshots/trash_screen.png" alt="Trash" width="200"/> | <img src="screenshots/about_screen.png" alt="About" width="200"/> |
 
 ## 📥 下载与安装 (Download)
 

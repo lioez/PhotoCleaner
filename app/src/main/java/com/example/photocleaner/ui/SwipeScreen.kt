@@ -364,7 +364,9 @@ fun SwipeablePhotoCard(
             ExtendedFloatingActionButton(
                 onClick = {
                     scope.launch {
-                        offsetX.animateTo(-screenWidthPx * 1.5f)
+                        // 优化动画：同时进行位移和旋转，模拟真实抛出效果
+                        launch { rotation.animateTo(-20f, animationSpec = tween(300)) }
+                        offsetX.animateTo(-screenWidthPx * 1.5f, animationSpec = tween(300))
                         onSwipeLeft()
                     }
                 },
@@ -385,7 +387,9 @@ fun SwipeablePhotoCard(
             ExtendedFloatingActionButton(
                 onClick = {
                     scope.launch {
-                        offsetX.animateTo(screenWidthPx * 1.5f)
+                        // 优化动画：同时进行位移和旋转，模拟真实抛出效果
+                        launch { rotation.animateTo(20f, animationSpec = tween(300)) }
+                        offsetX.animateTo(screenWidthPx * 1.5f, animationSpec = tween(300))
                         onSwipeRight()
                     }
                 },

@@ -7,6 +7,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import coil.imageLoader
+import coil.request.ImageRequest
 import com.example.photocleaner.data.Photo
 import com.example.photocleaner.data.PhotoRepository
 import kotlinx.coroutines.launch
@@ -31,6 +33,14 @@ class CleanerViewModel(application: Application) : AndroidViewModel(application)
     private val repository = PhotoRepository(application)
     // 用于存储待处理照片 ID 的队列
     private val globalIdPool = ArrayDeque<Long>()
+
+    // 预加载配置
+    private val PRELOAD_BUFFER_SIZE = 20 // 缓存池大小
+    private val REFILL_THRESHOLD = 5     // 触发补充的阈值
+    private val PRELOAD_BITMAP_COUNT = 8 // 提前渲染图片的数量
+
+    // 待显示照片缓冲队列
+    private val preloadBuffer = ArrayDeque<Photo>()
 
     // 待删除列表 (使用 mutableStateListOf 以便 UI 自动更新)
     private val _pendingDeleteList = androidx.compose.runtime.mutableStateListOf<Photo>()
@@ -69,6 +79,7 @@ class CleanerViewModel(application: Application) : AndroidViewModel(application)
             uiState = UiState.Loading
             actionHistory.clear()
             processedCount = 0
+            preloadBuffer.clear()
 
             // 从仓库获取所有图片 ID
             val allIds = repository.getAllImageIds()
@@ -90,8 +101,32 @@ class CleanerViewModel(application: Application) : AndroidViewModel(application)
             shuffledIds.shuffle()
             globalIdPool.clear()
             globalIdPool.addAll(shuffledIds)
+
+            // 初始填充缓冲区
+            fillPreloadBuffer()
+
             // 加载第一张照片
             loadNextPhoto()
+        }
+    }
+
+    /**
+     * 填充预加载缓冲区，并触发图片预加载
+     */
+    private fun fillPreloadBuffer() {
+        // 1. 补充 Photo 对象到缓冲区
+        while (preloadBuffer.size < PRELOAD_BUFFER_SIZE && globalIdPool.isNotEmpty()) {
+            val nextId = globalIdPool.removeFirst()
+            val uri = repository.getUriForId(nextId)
+            preloadBuffer.addLast(Photo(id = nextId, uri = uri))
+        }
+
+        // 2. 对缓冲区前几张进行图片预加载 (Pre-render)
+        preloadBuffer.take(PRELOAD_BITMAP_COUNT).forEach { photo ->
+            val request = ImageRequest.Builder(getApplication())
+                .data(photo.uri)
+                .build()
+            getApplication<Application>().imageLoader.enqueue(request)
         }
     }
 
@@ -112,13 +147,27 @@ class CleanerViewModel(application: Application) : AndroidViewModel(application)
      * 从队列中取出下一张照片并更新 UI 状态。
      */
     fun loadNextPhoto() {
-        if (globalIdPool.isEmpty()) {
-            uiState = UiState.Empty
-            return
+        // 检查是否需要补充
+        if (preloadBuffer.size < REFILL_THRESHOLD) {
+            fillPreloadBuffer()
         }
-        val nextId = globalIdPool.removeFirst()
-        val uri = repository.getUriForId(nextId)
-        uiState = UiState.Ready(currentPhoto = Photo(id = nextId, uri = uri))
+
+        if (preloadBuffer.isEmpty()) {
+             // 尝试最后一次补充（处理边界情况）
+             fillPreloadBuffer()
+             if (preloadBuffer.isEmpty()) {
+                 uiState = UiState.Empty
+                 return
+             }
+        }
+
+        val nextPhoto = preloadBuffer.removeFirst()
+        uiState = UiState.Ready(currentPhoto = nextPhoto)
+
+        // 再次检查补充，确保后台始终有存货
+        if (preloadBuffer.size < REFILL_THRESHOLD) {
+            fillPreloadBuffer()
+        }
     }
 
     /**
@@ -164,7 +213,8 @@ class CleanerViewModel(application: Application) : AndroidViewModel(application)
         if (uiState is UiState.Ready) {
             val current = (uiState as UiState.Ready).currentPhoto
             if (current != null) {
-                globalIdPool.addFirst(current.id)
+                // 放回缓冲区头部，而不是 globalIdPool
+                preloadBuffer.addFirst(current)
             }
         }
 

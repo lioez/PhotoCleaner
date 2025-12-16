@@ -24,6 +24,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.example.photocleaner.ui.SystemTrashScreen
 import com.example.photocleaner.ui.TrashReviewScreen
+import com.example.photocleaner.ui.AboutScreen
+
+import com.example.photocleaner.ui.FullScreenPhotoScreen
+import com.example.photocleaner.data.Photo
+
+import androidx.compose.foundation.isSystemInDarkTheme
 
 class MainActivity : ComponentActivity() {
 
@@ -56,12 +62,23 @@ class MainActivity : ComponentActivity() {
         checkPermissions()
 
         setContent {
-            PhotoCleanerTheme {
+            // 主题模式状态：0=跟随系统, 1=浅色, 2=深色
+            var themeMode by remember { mutableStateOf(0) }
+            val isDarkTheme = when (themeMode) {
+                1 -> false
+                2 -> true
+                else -> isSystemInDarkTheme()
+            }
+
+            PhotoCleanerTheme(darkTheme = isDarkTheme) {
                 // 简单的导航状态管理
                 // 0: 主页面 (SwipeScreen)
                 // 1: 待删除页面 (TrashReviewScreen)
                 // 2: 系统回收站页面 (SystemTrashScreen)
+                // 3: 关于页面 (AboutScreen)
+                // 4: 全屏查看 (FullScreenPhotoScreen)
                 var currentScreen by remember { mutableStateOf(0) }
+                var viewingPhoto by remember { mutableStateOf<Photo?>(null) }
 
                 // 移除外层 Scaffold，让每个屏幕自己处理系统栏边距 (Edge-to-Edge)
                 Surface(
@@ -71,7 +88,14 @@ class MainActivity : ComponentActivity() {
                     when (currentScreen) {
                         0 -> SwipeScreen(
                             viewModel = viewModel,
-                            onTrashClick = { currentScreen = 1 }
+                            onTrashClick = { currentScreen = 1 },
+                            onInfoClick = { currentScreen = 3 },
+                            themeMode = themeMode,
+                            onThemeChange = { themeMode = it },
+                            onViewOriginal = { photo ->
+                                viewingPhoto = photo
+                                currentScreen = 4
+                            }
                         )
                         1 -> TrashReviewScreen(
                             viewModel = viewModel,
@@ -82,6 +106,17 @@ class MainActivity : ComponentActivity() {
                             viewModel = viewModel,
                             onBack = { currentScreen = 1 }
                         )
+                        3 -> AboutScreen(
+                            onBack = { currentScreen = 0 }
+                        )
+                        4 -> {
+                            viewingPhoto?.let { photo ->
+                                FullScreenPhotoScreen(
+                                    photo = photo,
+                                    onDismiss = { currentScreen = 0 }
+                                )
+                            }
+                        }
                     }
                 }
             }

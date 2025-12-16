@@ -48,6 +48,15 @@ class CleanerViewModel(application: Application) : AndroidViewModel(application)
     private val _systemTrashList = androidx.compose.runtime.mutableStateListOf<Photo>()
     val systemTrashList: List<Photo> = _systemTrashList
 
+    // 操作历史栈 (用于撤销)
+    private val actionHistory = ArrayDeque<Pair<Photo, Boolean>>() // Pair<Photo, isLeftSwipe>
+
+    // 统计数据
+    var totalPhotosCount by mutableStateOf(0)
+        private set
+    var processedCount by mutableStateOf(0)
+        private set
+
     init {
         loadAndShufflePhotos()
     }
@@ -58,6 +67,9 @@ class CleanerViewModel(application: Application) : AndroidViewModel(application)
     fun loadAndShufflePhotos() {
         viewModelScope.launch {
             uiState = UiState.Loading
+            actionHistory.clear()
+            processedCount = 0
+
             // 从仓库获取所有图片 ID
             val allIds = repository.getAllImageIds()
             // 获取本地回收站的 ID
@@ -65,6 +77,8 @@ class CleanerViewModel(application: Application) : AndroidViewModel(application)
 
             // 过滤掉已经在回收站的照片
             val availableIds = allIds.filter { !trashedIds.contains(it) }
+
+            totalPhotosCount = availableIds.size
 
             if (availableIds.isEmpty()) {
                 uiState = UiState.Empty
@@ -111,6 +125,9 @@ class CleanerViewModel(application: Application) : AndroidViewModel(application)
      * 处理左滑操作（例如：删除/跳过）。
      */
     fun swipeLeft(photo: Photo) {
+        // 记录历史
+        actionHistory.addLast(photo to true)
+        processedCount++
         // 存入本地回收站
         repository.addToLocalTrash(photo.id)
         // 同时也更新内存中的列表（虽然 refreshTrashList 会重载，但保持同步是个好习惯）
@@ -121,7 +138,39 @@ class CleanerViewModel(application: Application) : AndroidViewModel(application)
     /**
      * 处理右滑操作（例如：保留）。
      */
-    fun swipeRight(photo: Photo) { loadNextPhoto() }
+    fun swipeRight(photo: Photo) {
+        // 记录历史
+        actionHistory.addLast(photo to false)
+        processedCount++
+        loadNextPhoto()
+    }
+
+    /**
+     * 撤销上一次操作
+     */
+    fun undo() {
+        if (actionHistory.isEmpty()) return
+
+        val (lastPhoto, wasLeftSwipe) = actionHistory.removeLast()
+        processedCount--
+
+        // 如果上一步是左滑（删除），需要从回收站恢复
+        if (wasLeftSwipe) {
+            repository.removeFromLocalTrash(lastPhoto.id)
+            _pendingDeleteList.remove(lastPhoto)
+        }
+
+        // 将当前正在显示的照片（如果有）放回池子头部
+        if (uiState is UiState.Ready) {
+            val current = (uiState as UiState.Ready).currentPhoto
+            if (current != null) {
+                globalIdPool.addFirst(current.id)
+            }
+        }
+
+        // 恢复上一步的照片
+        uiState = UiState.Ready(lastPhoto)
+    }
 
     /**
      * 从待删除列表中移除照片（撤销删除）。

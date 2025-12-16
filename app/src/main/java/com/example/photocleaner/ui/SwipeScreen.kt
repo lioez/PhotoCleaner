@@ -7,9 +7,15 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SettingsBrightness
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,46 +41,148 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
+import androidx.compose.material.icons.filled.Visibility
+
 @Composable
 fun SwipeScreen(
     viewModel: CleanerViewModel,
-    onTrashClick: () -> Unit
+    onTrashClick: () -> Unit,
+    onInfoClick: () -> Unit,
+    themeMode: Int,
+    onThemeChange: (Int) -> Unit,
+    onViewOriginal: (Photo) -> Unit
 ) {
     val state = viewModel.uiState
     val pendingDeleteCount = viewModel.pendingDeleteList.size
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .systemBarsPadding(), // 统一处理系统栏边距
-        contentAlignment = Alignment.Center
+            .systemBarsPadding() // 统一处理系统栏边距
     ) {
         // 顶部栏：显示垃圾桶图标和计数
         if (state is UiState.Ready || state is UiState.Empty) {
-            Box(
+            Row(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp)
-                    // .statusBarsPadding() // 父容器已经处理了，这里不需要了
-                    .zIndex(1f) // 确保显示在最上层
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                FilledTonalButton(
-                    onClick = onTrashClick,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Trash",
-                        modifier = Modifier.size(20.dp)
+                // 左侧：关于 + 主题切换
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // 关于按钮
+                    IconButton(onClick = onInfoClick) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "About"
+                        )
+                    }
+
+                    // 主题切换按钮 (带下拉菜单)
+                    Box {
+                        var expanded by remember { mutableStateOf(false) }
+                        IconButton(onClick = { expanded = true }) {
+                            Icon(
+                                imageVector = when (themeMode) {
+                                    1 -> Icons.Default.LightMode
+                                    2 -> Icons.Default.DarkMode
+                                    else -> Icons.Default.SettingsBrightness
+                                },
+                                contentDescription = "Theme Toggle"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("跟随系统") },
+                                onClick = {
+                                    onThemeChange(0)
+                                    expanded = false
+                                },
+                                leadingIcon = { Icon(Icons.Default.SettingsBrightness, null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("浅色模式") },
+                                onClick = {
+                                    onThemeChange(1)
+                                    expanded = false
+                                },
+                                leadingIcon = { Icon(Icons.Default.LightMode, null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("深色模式") },
+                                onClick = {
+                                    onThemeChange(2)
+                                    expanded = false
+                                },
+                                leadingIcon = { Icon(Icons.Default.DarkMode, null) }
+                            )
+                        }
+                    }
+                }
+
+                // 中间：统计信息 (进度)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "本次进度",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.secondary
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "$pendingDeleteCount")
+                    Text(
+                        text = "${viewModel.processedCount} / ${viewModel.totalPhotosCount}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                // 右侧：功能按钮组
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // 撤销按钮
+                    IconButton(onClick = { viewModel.undo() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Undo,
+                            contentDescription = "Undo"
+                        )
+                    }
+
+                    // 恢复/刷新按钮 (重置)
+                    IconButton(onClick = { viewModel.loadAndShufflePhotos() }) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh"
+                        )
+                    }
+
+                    // 垃圾桶按钮
+                    IconButton(onClick = onTrashClick) {
+                        BadgedBox(
+                            badge = {
+                                if (pendingDeleteCount > 0) {
+                                    Badge { Text("$pendingDeleteCount") }
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Trash"
+                            )
+                        }
+                    }
                 }
             }
         }
 
-        when (state) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            when (state) {
             is UiState.Loading -> {
                 CircularProgressIndicator()
             }
@@ -95,7 +203,8 @@ fun SwipeScreen(
                         SwipeablePhotoCard(
                             photo = photo,
                             onSwipeLeft = { viewModel.swipeLeft(photo) },
-                            onSwipeRight = { viewModel.swipeRight(photo) }
+                            onSwipeRight = { viewModel.swipeRight(photo) },
+                            onViewOriginal = { onViewOriginal(photo) }
                         )
                     }
                 }
@@ -103,12 +212,15 @@ fun SwipeScreen(
         }
     }
 }
+}
 
 @Composable
 fun SwipeablePhotoCard(
     photo: Photo,
     onSwipeLeft: () -> Unit,
-    onSwipeRight: () -> Unit
+    onSwipeRight: () -> Unit,
+    onViewOriginal: () -> Unit
+
 ) {
     // 屏幕宽度，用于计算滑动阈值
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
@@ -260,6 +372,14 @@ fun SwipeablePhotoCard(
                 contentColor = MaterialTheme.colorScheme.onErrorContainer,
                 icon = { Icon(Icons.Default.Close, contentDescription = "Delete") },
                 text = { Text("删除") }
+            )
+
+            ExtendedFloatingActionButton(
+                onClick = onViewOriginal,
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                icon = { Icon(Icons.Default.Visibility, contentDescription = "View") },
+                text = { Text("查看") }
             )
 
             ExtendedFloatingActionButton(

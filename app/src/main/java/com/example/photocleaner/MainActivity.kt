@@ -30,6 +30,7 @@ import com.example.photocleaner.ui.FullScreenPhotoScreen
 import com.example.photocleaner.data.Photo
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.activity.compose.BackHandler
 
 class MainActivity : ComponentActivity() {
 
@@ -97,19 +98,29 @@ class MainActivity : ComponentActivity() {
                                 currentScreen = 4
                             }
                         )
-                        1 -> TrashReviewScreen(
-                            viewModel = viewModel,
-                            onBack = { currentScreen = 0 },
-                            onOpenSystemTrash = { currentScreen = 2 }
-                        )
-                        2 -> SystemTrashScreen(
-                            viewModel = viewModel,
-                            onBack = { currentScreen = 1 }
-                        )
-                        3 -> AboutScreen(
-                            onBack = { currentScreen = 0 }
-                        )
+                        1 -> {
+                            BackHandler { currentScreen = 0 }
+                            TrashReviewScreen(
+                                viewModel = viewModel,
+                                onBack = { currentScreen = 0 },
+                                onOpenSystemTrash = { currentScreen = 2 }
+                            )
+                        }
+                        2 -> {
+                            BackHandler { currentScreen = 1 }
+                            SystemTrashScreen(
+                                viewModel = viewModel,
+                                onBack = { currentScreen = 1 }
+                            )
+                        }
+                        3 -> {
+                            BackHandler { currentScreen = 0 }
+                            AboutScreen(
+                                onBack = { currentScreen = 0 }
+                            )
+                        }
                         4 -> {
+                            BackHandler { currentScreen = 0 }
                             viewingPhoto?.let { photo ->
                                 FullScreenPhotoScreen(
                                     photo = photo,

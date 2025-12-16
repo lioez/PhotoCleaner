@@ -67,13 +67,19 @@
 
 ## 📥 下载与安装 (Download)
 
-目前您可以直接 Clone 本仓库并使用 Android Studio 编译安装。
+您可以直接从 GitHub Releases 下载最新版本的 APK 安装包：
+
+<p align="center">
+  <a href="https://github.com/lioez/PhotoCleaner/releases/latest/download/PhotoCleaner.apk">
+    <img src="https://img.shields.io/github/v/release/lioez/PhotoCleaner?style=for-the-badge&label=Download%20APK&color=success&logo=android" alt="Download APK" />
+  </a>
+</p>
+
+或者 Clone 本仓库并使用 Android Studio 编译安装。
 
 ```bash
 git clone https://github.com/lioez/PhotoCleaner.git
 ```
-
-*(后续发布 Release 包后在此处更新下载链接)*
 
 ## 📄 许可证 (License)
 

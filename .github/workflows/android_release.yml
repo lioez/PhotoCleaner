@@ -27,17 +27,47 @@ jobs:
       - name: Build Release APK
         run: ./gradlew assembleRelease
 
+      - name: Find Build Tools
+        id: build_tools
+        run: |
+          BUILD_TOOLS_VERSION=$(ls $ANDROID_HOME/build-tools/ | sort -r | head -n 1)
+          echo "version=$BUILD_TOOLS_VERSION" >> $GITHUB_OUTPUT
+          echo "Found build tools version: $BUILD_TOOLS_VERSION"
+
       # 为了让 Release 包可安装，我们需要签名。
       # 请确保在 GitHub Secrets 中配置了 SIGNING_KEY, ALIAS, KEY_STORE_PASSWORD, KEY_PASSWORD
       - name: Sign Release APK
         id: sign_app
-        uses: r0adkll/sign-android-release@v1
-        with:
-          releaseDirectory: app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-          alias: ${{ secrets.ALIAS }}
-          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          # 1. 解码 Keystore 文件
+          echo "${{ secrets.SIGNING_KEY }}" | base64 --decode > release.keystore
+
+          # 2. 找到 apksigner 工具
+          BUILD_TOOLS_VERSION="${{ steps.build_tools.outputs.version }}"
+          APKSIGNER="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner"
+          echo "Using apksigner at: $APKSIGNER"
+
+          # 3. 确定输入文件 (优先使用未签名的)
+          if [ -f app/build/outputs/apk/release/app-release-unsigned.apk ]; then
+            INPUT_APK="app/build/outputs/apk/release/app-release-unsigned.apk"
+          else
+            INPUT_APK="app/build/outputs/apk/release/app-release.apk"
+          fi
+
+          OUTPUT_APK="app/build/outputs/apk/release/app-release-signed.apk"
+          echo "Signing $INPUT_APK -> $OUTPUT_APK"
+
+          # 4. 执行签名
+          "$APKSIGNER" sign --ks release.keystore \
+            --ks-key-alias "${{ secrets.ALIAS }}" \
+            --ks-pass "pass:${{ secrets.KEY_STORE_PASSWORD }}" \
+            --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
+            --out "$OUTPUT_APK" \
+            "$INPUT_APK"
+
+          # 5. 清理并设置输出
+          rm release.keystore
+          echo "signedFile=$OUTPUT_APK" >> $GITHUB_OUTPUT
 
       - name: Rename APK
         run: mv ${{ steps.sign_app.outputs.signedFile }} PhotoCleaner.apk

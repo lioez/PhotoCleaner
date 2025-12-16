@@ -16,6 +16,12 @@ import com.example.photocleaner.ui.SwipeScreen
 import com.example.photocleaner.ui.theme.PhotoCleanerTheme
 import com.example.photocleaner.viewmodel.CleanerViewModel
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.example.photocleaner.ui.TrashReviewScreen
+
 class MainActivity : ComponentActivity() {
 
     // 1. 初始化 ViewModel (我们的逻辑大脑)
@@ -48,15 +54,22 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             PhotoCleanerTheme {
-                // Scaffold 是标准的 Material3 页面骨架
+                // 简单的导航状态：true 显示垃圾桶页面，false 显示主页面
+                var showTrashScreen by remember { mutableStateOf(false) }
+
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-
-                    // Box 是一个容器，用来应用 innerPadding
-                    // 这样你的内容就不会被状态栏(电池图标)或底部导航条挡住
                     Box(modifier = Modifier.padding(innerPadding)) {
-
-                        // 5. 这里原来是 Greeting(...)，现在换成我们的界面！
-                        SwipeScreen(viewModel = viewModel)
+                        if (showTrashScreen) {
+                            TrashReviewScreen(
+                                viewModel = viewModel,
+                                onBack = { showTrashScreen = false }
+                            )
+                        } else {
+                            SwipeScreen(
+                                viewModel = viewModel,
+                                onTrashClick = { showTrashScreen = true }
+                            )
+                        }
                     }
                 }
             }

@@ -91,4 +91,11 @@ class CleanerViewModel(application: Application) : AndroidViewModel(application)
      * 处理右滑操作（例如：保留）。
      */
     fun swipeRight(photo: Photo) { loadNextPhoto() }
+
+    /**
+     * 从待删除列表中移除照片（撤销删除）。
+     */
+    fun restorePhoto(photo: Photo) {
+        _pendingDeleteList.remove(photo)
+    }
 }

@@ -36,7 +36,10 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 @Composable
-fun SwipeScreen(viewModel: CleanerViewModel) {
+fun SwipeScreen(
+    viewModel: CleanerViewModel,
+    onTrashClick: () -> Unit
+) {
     val state = viewModel.uiState
     val pendingDeleteCount = viewModel.pendingDeleteList.size
 
@@ -56,7 +59,7 @@ fun SwipeScreen(viewModel: CleanerViewModel) {
                     .zIndex(1f) // 确保显示在最上层
             ) {
                 FilledTonalButton(
-                    onClick = { /* TODO: 跳转到确认删除页面 */ },
+                    onClick = onTrashClick,
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Icon(

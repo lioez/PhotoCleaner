@@ -82,7 +82,10 @@ class CleanerViewModel(application: Application) : AndroidViewModel(application)
     /**
      * 处理左滑操作（例如：删除/跳过）。
      */
-    fun swipeLeft(photo: Photo) { loadNextPhoto() }
+    fun swipeLeft(photo: Photo) {
+        _pendingDeleteList.add(photo)
+        loadNextPhoto()
+    }
 
     /**
      * 处理右滑操作（例如：保留）。

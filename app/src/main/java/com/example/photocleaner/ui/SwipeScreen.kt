@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import com.example.photocleaner.data.Photo
 import com.example.photocleaner.viewmodel.CleanerViewModel
@@ -37,6 +38,7 @@ import kotlin.math.roundToInt
 @Composable
 fun SwipeScreen(viewModel: CleanerViewModel) {
     val state = viewModel.uiState
+    val pendingDeleteCount = viewModel.pendingDeleteList.size
 
     Box(
         modifier = Modifier
@@ -44,6 +46,30 @@ fun SwipeScreen(viewModel: CleanerViewModel) {
             .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
+        // 顶部栏：显示垃圾桶图标和计数
+        if (state is UiState.Ready || state is UiState.Empty) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .statusBarsPadding() // 避开状态栏
+                    .zIndex(1f) // 确保显示在最上层
+            ) {
+                FilledTonalButton(
+                    onClick = { /* TODO: 跳转到确认删除页面 */ },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Trash",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "$pendingDeleteCount")
+                }
+            }
+        }
+
         when (state) {
             is UiState.Loading -> {
                 CircularProgressIndicator()

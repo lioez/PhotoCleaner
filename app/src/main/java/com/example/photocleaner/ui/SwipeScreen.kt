@@ -46,7 +46,8 @@ fun SwipeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(MaterialTheme.colorScheme.background)
+            .systemBarsPadding(), // 统一处理系统栏边距
         contentAlignment = Alignment.Center
     ) {
         // 顶部栏：显示垃圾桶图标和计数
@@ -55,7 +56,7 @@ fun SwipeScreen(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(16.dp)
-                    .statusBarsPadding() // 避开状态栏
+                    // .statusBarsPadding() // 父容器已经处理了，这里不需要了
                     .zIndex(1f) // 确保显示在最上层
             ) {
                 FilledTonalButton(

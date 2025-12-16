@@ -10,7 +10,9 @@ import androidx.activity.viewModels // 这一行如果爆红，看下面的“�
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.example.photocleaner.ui.SwipeScreen
 import com.example.photocleaner.ui.theme.PhotoCleanerTheme
@@ -57,19 +59,21 @@ class MainActivity : ComponentActivity() {
                 // 简单的导航状态：true 显示垃圾桶页面，false 显示主页面
                 var showTrashScreen by remember { mutableStateOf(false) }
 
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Box(modifier = Modifier.padding(innerPadding)) {
-                        if (showTrashScreen) {
-                            TrashReviewScreen(
-                                viewModel = viewModel,
-                                onBack = { showTrashScreen = false }
-                            )
-                        } else {
-                            SwipeScreen(
-                                viewModel = viewModel,
-                                onTrashClick = { showTrashScreen = true }
-                            )
-                        }
+                // 移除外层 Scaffold，让每个屏幕自己处理系统栏边距 (Edge-to-Edge)
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    if (showTrashScreen) {
+                        TrashReviewScreen(
+                            viewModel = viewModel,
+                            onBack = { showTrashScreen = false }
+                        )
+                    } else {
+                        SwipeScreen(
+                            viewModel = viewModel,
+                            onTrashClick = { showTrashScreen = true }
+                        )
                     }
                 }
             }

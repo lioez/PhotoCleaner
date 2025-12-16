@@ -1,6 +1,7 @@
 package com.example.photocleaner.viewmodel
 
 import android.app.Application
+import android.content.IntentSender
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -39,6 +40,14 @@ class CleanerViewModel(application: Application) : AndroidViewModel(application)
     var uiState: UiState by mutableStateOf(UiState.Loading)
         private set
 
+    // 用于触发删除确认弹窗的 IntentSender
+    var deleteIntentSender: IntentSender? by mutableStateOf(null)
+        private set
+
+    // 系统回收站列表
+    private val _systemTrashList = androidx.compose.runtime.mutableStateListOf<Photo>()
+    val systemTrashList: List<Photo> = _systemTrashList
+
     init {
         loadAndShufflePhotos()
     }
@@ -50,19 +59,38 @@ class CleanerViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             uiState = UiState.Loading
             // 从仓库获取所有图片 ID
-            val ids = repository.getAllImageIds()
+            val allIds = repository.getAllImageIds()
+            // 获取本地回收站的 ID
+            val trashedIds = repository.getLocalTrashedIds()
 
-            if (ids.isEmpty()) {
+            // 过滤掉已经在回收站的照片
+            val availableIds = allIds.filter { !trashedIds.contains(it) }
+
+            if (availableIds.isEmpty()) {
                 uiState = UiState.Empty
                 return@launch
             }
 
             // 打乱顺序，增加趣味性
-            val shuffledIds = ids.toMutableList()
+            val shuffledIds = availableIds.toMutableList()
             shuffledIds.shuffle()
+            globalIdPool.clear()
             globalIdPool.addAll(shuffledIds)
             // 加载第一张照片
             loadNextPhoto()
+        }
+    }
+
+    /**
+     * 刷新待删除列表（从本地存储加载）。
+     * 每次进入垃圾桶页面时调用。
+     */
+    fun refreshTrashList() {
+        _pendingDeleteList.clear()
+        val trashedIds = repository.getLocalTrashedIds()
+        trashedIds.forEach { id ->
+            val uri = repository.getUriForId(id)
+            _pendingDeleteList.add(Photo(id = id, uri = uri))
         }
     }
 
@@ -83,6 +111,9 @@ class CleanerViewModel(application: Application) : AndroidViewModel(application)
      * 处理左滑操作（例如：删除/跳过）。
      */
     fun swipeLeft(photo: Photo) {
+        // 存入本地回收站
+        repository.addToLocalTrash(photo.id)
+        // 同时也更新内存中的列表（虽然 refreshTrashList 会重载，但保持同步是个好习惯）
         _pendingDeleteList.add(photo)
         loadNextPhoto()
     }
@@ -96,6 +127,87 @@ class CleanerViewModel(application: Application) : AndroidViewModel(application)
      * 从待删除列表中移除照片（撤销删除）。
      */
     fun restorePhoto(photo: Photo) {
+        repository.removeFromLocalTrash(photo.id)
         _pendingDeleteList.remove(photo)
+    }
+
+    /**
+     * 确认删除所有待删除的照片。
+     * @param permanentDelete 是否永久删除（true=物理删除，false=移入系统回收站）
+     */
+    fun confirmDelete(permanentDelete: Boolean) {
+        viewModelScope.launch {
+            val intentSender = if (permanentDelete) {
+                repository.deletePhotos(pendingDeleteList)
+            } else {
+                repository.trashPhotos(pendingDeleteList)
+            }
+
+            if (intentSender != null) {
+                deleteIntentSender = intentSender
+            } else {
+                onDeleteSuccess()
+            }
+        }
+    }
+
+    /**
+     * 加载系统回收站内容
+     */
+    fun loadSystemTrash() {
+        viewModelScope.launch {
+            _systemTrashList.clear()
+            _systemTrashList.addAll(repository.getSystemTrashPhotos())
+        }
+    }
+
+    /**
+     * 从系统回收站恢复照片
+     */
+    fun restoreFromSystemTrash(photos: List<Photo>) {
+        viewModelScope.launch {
+            val intentSender = repository.restoreFromSystemTrash(photos)
+            if (intentSender != null) {
+                deleteIntentSender = intentSender
+            } else {
+                loadSystemTrash() // 刷新列表
+            }
+        }
+    }
+
+    /**
+     * 从系统回收站永久删除照片
+     */
+    fun deleteFromSystemTrash(photos: List<Photo>) {
+        viewModelScope.launch {
+            val intentSender = repository.deletePhotos(photos)
+            if (intentSender != null) {
+                deleteIntentSender = intentSender
+            } else {
+                loadSystemTrash() // 刷新列表
+            }
+        }
+    }
+
+    /**
+     * 当用户在系统弹窗中确认删除后调用。
+     */
+    fun onDeleteSuccess() {
+        // 从本地回收站记录中清除这些 ID
+        val idsToDelete = pendingDeleteList.map { it.id }
+        repository.clearLocalTrash(idsToDelete)
+
+        _pendingDeleteList.clear()
+        deleteIntentSender = null
+
+        // 如果是在系统回收站页面操作成功，也刷新一下
+        loadSystemTrash()
+    }
+
+    /**
+     * 重置删除请求状态（例如用户取消了弹窗）。
+     */
+    fun resetDeleteState() {
+        deleteIntentSender = null
     }
 }

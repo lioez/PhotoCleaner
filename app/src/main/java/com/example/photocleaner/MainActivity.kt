@@ -22,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.example.photocleaner.ui.SystemTrashScreen
 import com.example.photocleaner.ui.TrashReviewScreen
 
 class MainActivity : ComponentActivity() {
@@ -56,23 +57,30 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             PhotoCleanerTheme {
-                // 简单的导航状态：true 显示垃圾桶页面，false 显示主页面
-                var showTrashScreen by remember { mutableStateOf(false) }
+                // 简单的导航状态管理
+                // 0: 主页面 (SwipeScreen)
+                // 1: 待删除页面 (TrashReviewScreen)
+                // 2: 系统回收站页面 (SystemTrashScreen)
+                var currentScreen by remember { mutableStateOf(0) }
 
                 // 移除外层 Scaffold，让每个屏幕自己处理系统栏边距 (Edge-to-Edge)
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    if (showTrashScreen) {
-                        TrashReviewScreen(
+                    when (currentScreen) {
+                        0 -> SwipeScreen(
                             viewModel = viewModel,
-                            onBack = { showTrashScreen = false }
+                            onTrashClick = { currentScreen = 1 }
                         )
-                    } else {
-                        SwipeScreen(
+                        1 -> TrashReviewScreen(
                             viewModel = viewModel,
-                            onTrashClick = { showTrashScreen = true }
+                            onBack = { currentScreen = 0 },
+                            onOpenSystemTrash = { currentScreen = 2 }
+                        )
+                        2 -> SystemTrashScreen(
+                            viewModel = viewModel,
+                            onBack = { currentScreen = 1 }
                         )
                     }
                 }

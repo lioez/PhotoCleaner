@@ -3,9 +3,9 @@ package com.example.photocleaner.data
 import android.content.ContentUris
 import android.content.Context
 import android.content.IntentSender
-import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import androidx.core.content.edit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -15,13 +15,13 @@ import kotlinx.coroutines.withContext
 class PhotoRepository(private val context: Context) {
 
     private val prefs = context.getSharedPreferences("app_trash_prefs", Context.MODE_PRIVATE)
-    private val TRASH_KEY = "trashed_photo_ids"
+    private val trashKey = "trashed_photo_ids"
 
     /**
      * 获取本地回收站中的所有照片 ID。
      */
     fun getLocalTrashedIds(): Set<Long> {
-        val stringSet = prefs.getStringSet(TRASH_KEY, emptySet()) ?: emptySet()
+        val stringSet = prefs.getStringSet(trashKey, emptySet()) ?: emptySet()
         return stringSet.mapNotNull { it.toLongOrNull() }.toSet()
     }
 
@@ -31,7 +31,7 @@ class PhotoRepository(private val context: Context) {
     fun addToLocalTrash(id: Long) {
         val current = getLocalTrashedIds().toMutableSet()
         current.add(id)
-        prefs.edit().putStringSet(TRASH_KEY, current.map { it.toString() }.toSet()).apply()
+        prefs.edit { putStringSet(trashKey, current.map { it.toString() }.toSet()) }
     }
 
     /**
@@ -40,7 +40,7 @@ class PhotoRepository(private val context: Context) {
     fun removeFromLocalTrash(id: Long) {
         val current = getLocalTrashedIds().toMutableSet()
         current.remove(id)
-        prefs.edit().putStringSet(TRASH_KEY, current.map { it.toString() }.toSet()).apply()
+        prefs.edit { putStringSet(trashKey, current.map { it.toString() }.toSet()) }
     }
 
     /**
@@ -49,7 +49,7 @@ class PhotoRepository(private val context: Context) {
     fun clearLocalTrash(ids: List<Long>) {
         val current = getLocalTrashedIds().toMutableSet()
         current.removeAll(ids.toSet())
-        prefs.edit().putStringSet(TRASH_KEY, current.map { it.toString() }.toSet()).apply()
+        prefs.edit { putStringSet(trashKey, current.map { it.toString() }.toSet()) }
     }
 
     /**
@@ -96,15 +96,9 @@ class PhotoRepository(private val context: Context) {
         if (photos.isEmpty()) return@withContext null
         val uris = photos.map { it.uri }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // true = 移入回收站
-            val pendingIntent = MediaStore.createTrashRequest(context.contentResolver, uris, true)
-            return@withContext pendingIntent.intentSender
-        } else {
-            // Android 10- 只能直接删除
-            deletePhotosDirectly(uris)
-            return@withContext null
-        }
+        // true = 移入回收站
+        val pendingIntent = MediaStore.createTrashRequest(context.contentResolver, uris, true)
+        return@withContext pendingIntent.intentSender
     }
 
     /**
@@ -114,14 +108,9 @@ class PhotoRepository(private val context: Context) {
         if (photos.isEmpty()) return@withContext null
         val uris = photos.map { it.uri }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // createDeleteRequest = 物理删除
-            val pendingIntent = MediaStore.createDeleteRequest(context.contentResolver, uris)
-            return@withContext pendingIntent.intentSender
-        } else {
-            deletePhotosDirectly(uris)
-            return@withContext null
-        }
+        // createDeleteRequest = 物理删除
+        val pendingIntent = MediaStore.createDeleteRequest(context.contentResolver, uris)
+        return@withContext pendingIntent.intentSender
     }
 
     /**
@@ -131,22 +120,9 @@ class PhotoRepository(private val context: Context) {
         if (photos.isEmpty()) return@withContext null
         val uris = photos.map { it.uri }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // false = 从回收站恢复
-            val pendingIntent = MediaStore.createTrashRequest(context.contentResolver, uris, false)
-            return@withContext pendingIntent.intentSender
-        }
-        return@withContext null
-    }
-
-    private fun deletePhotosDirectly(uris: List<android.net.Uri>) {
-        for (uri in uris) {
-            try {
-                context.contentResolver.delete(uri, null, null)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
+        // false = 从回收站恢复
+        val pendingIntent = MediaStore.createTrashRequest(context.contentResolver, uris, false)
+        return@withContext pendingIntent.intentSender
     }
 
     /**
@@ -154,8 +130,6 @@ class PhotoRepository(private val context: Context) {
      * 包含过期时间信息。
      */
     suspend fun getSystemTrashPhotos(): List<Photo> = withContext(Dispatchers.IO) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return@withContext emptyList()
-
         val trashList = mutableListOf<Photo>()
         val collection = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
         val projection = arrayOf(

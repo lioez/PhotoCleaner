@@ -1,7 +1,6 @@
 package com.example.photocleaner.ui
 
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,7 +11,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import com.example.photocleaner.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,7 +31,6 @@ fun AboutScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val scrollState = rememberScrollState()
     var showPrivacyPolicy by remember { mutableStateOf(false) }
 
     if (showPrivacyPolicy) {
@@ -59,7 +57,7 @@ fun AboutScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .verticalScroll(scrollState)
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -128,9 +126,9 @@ fun AboutScreen(
                     leadingContent = { Icon(Icons.Filled.Code, contentDescription = null) },
                     modifier = Modifier.clickable {
                         try {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/lioez"))
+                            val intent = Intent(Intent.ACTION_VIEW, "https://github.com/lioez".toUri())
                             context.startActivity(intent)
-                        } catch (e: Exception) {
+                        } catch (_: Exception) {
                             // 防止没有浏览器的情况
                         }
                     }
@@ -149,7 +147,6 @@ fun AboutScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.height(32.dp))
 
             // --- 底部 Footer ---

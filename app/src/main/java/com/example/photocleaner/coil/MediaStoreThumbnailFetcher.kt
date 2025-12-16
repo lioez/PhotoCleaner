@@ -2,12 +2,10 @@ package com.example.photocleaner.coil
 
 import android.content.ContentResolver
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
-import android.provider.MediaStore
 import android.util.Size
+import androidx.core.graphics.drawable.toDrawable
 import coil.ImageLoader
 import coil.decode.DataSource
 import coil.fetch.DrawableResult
@@ -59,26 +57,20 @@ class MediaStoreThumbnailFetcher(
         }
 
         return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                // API 29+ (Android 10+): 使用 loadThumbnail
-                // 这是一个非常高效的系统 API，直接返回缩略图，无需解码原图
-                val thumbnail = context.contentResolver.loadThumbnail(
-                    data,
-                    Size(width, height),
-                    null
-                )
-
-                DrawableResult(
-                    drawable = android.graphics.drawable.BitmapDrawable(context.resources, thumbnail),
-                    isSampled = true,
-                    dataSource = DataSource.DISK
-                )
-            } else {
-                // Android 9 及以下：返回 null，让 Coil 使用默认的 ContentUriFetcher (解码原图)
-                // 或者也可以实现旧版的 MediaStore.Images.Thumbnails.getThumbnail
+            // API 29+ (Android 10+): 使用 loadThumbnail
+            // 这是一个非常高效的系统 API，直接返回缩略图，无需解码原图
+            val thumbnail = context.contentResolver.loadThumbnail(
+                data,
+                Size(width, height),
                 null
-            }
-        } catch (e: Exception) {
+            )
+
+            DrawableResult(
+                drawable = thumbnail.toDrawable(context.resources),
+                isSampled = true,
+                dataSource = DataSource.DISK
+            )
+        } catch (_: Exception) {
             // 如果加载失败（例如文件不存在），返回 null 让 Coil 尝试默认方式
             null
         }

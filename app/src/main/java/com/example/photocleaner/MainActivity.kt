@@ -7,11 +7,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels // 这一行如果爆红，看下面的“排错指南”
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.example.photocleaner.ui.SwipeScreen
@@ -19,6 +16,7 @@ import com.example.photocleaner.ui.theme.PhotoCleanerTheme
 import com.example.photocleaner.viewmodel.CleanerViewModel
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -64,7 +62,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             // 主题模式状态：0=跟随系统, 1=浅色, 2=深色
-            var themeMode by remember { mutableStateOf(0) }
+            var themeMode by remember { mutableIntStateOf(0) }
             val isDarkTheme = when (themeMode) {
                 1 -> false
                 2 -> true
@@ -78,7 +76,7 @@ class MainActivity : ComponentActivity() {
                 // 2: 系统回收站页面 (SystemTrashScreen)
                 // 3: 关于页面 (AboutScreen)
                 // 4: 全屏查看 (FullScreenPhotoScreen)
-                var currentScreen by remember { mutableStateOf(0) }
+                var currentScreen by remember { mutableIntStateOf(0) }
                 var viewingPhoto by remember { mutableStateOf<Photo?>(null) }
 
                 // 移除外层 Scaffold，让每个屏幕自己处理系统栏边距 (Edge-to-Edge)
@@ -135,13 +133,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun checkPermissions() {
-        // 简单的版本适配逻辑
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+
-            requestPermissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
-        } else {
-            // Android 12 及以下
-            requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
-        }
+        // Android 13+ (API 33+)
+        requestPermissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
     }
 }

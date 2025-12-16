@@ -2,6 +2,7 @@ package com.example.photocleaner.ui
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -9,17 +10,21 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.photocleaner.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,21 +65,20 @@ fun AboutScreen(
         ) {
             // --- 顶部 Header ---
             Spacer(modifier = Modifier.height(24.dp))
-            // App 图标 (占位)
+            // App 图标
             Surface(
                 modifier = Modifier.size(88.dp),
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer,
+                color = Color.White, // 使用白色背景
                 shadowElevation = 6.dp
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Filled.Image,
-                        contentDescription = "App Icon",
-                        modifier = Modifier.size(48.dp),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
+                // 手动组合：背景(Surface颜色) + 前景图层
+                Image(
+                    painter = painterResource(id = R.mipmap.ic_launcher_foreground),
+                    contentDescription = "App Icon",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
             }
             Spacer(modifier = Modifier.height(16.dp))
             Text(
@@ -94,9 +98,23 @@ fun AboutScreen(
             // 卡片 1：应用信息
             InfoCard(title = "简介") {
                 ListItem(
-                    headlineContent = { Text("让相册回归清爽") },
-                    supportingContent = { Text("高效的照片清理工具") },
-                    leadingContent = { Icon(Icons.Filled.Image, contentDescription = null) }
+                    headlineContent = { Text("清图 PhotoCleaner") },
+                    supportingContent = {
+                        Text(
+                            text = "一款专为整理相册打造的极简工具。\n\n" +
+                                    "• 极速清理：左滑删除，右滑保留，像刷短视频一样整理照片。\n" +
+                                    "• 隐私安全：所有操作均在本地完成，无需联网，不上传任何数据。\n" +
+                                    "• 极致体验：丝滑的动画效果，沉浸式的大图预览，让整理过程不再枯燥。",
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            imageVector = Icons.Filled.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -115,21 +133,6 @@ fun AboutScreen(
                         } catch (e: Exception) {
                             // 防止没有浏览器的情况
                         }
-                    }
-                )
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                // 分享
-                ListItem(
-                    headlineContent = { Text("分享给朋友") },
-                    leadingContent = { Icon(Icons.Filled.Share, contentDescription = null) },
-                    modifier = Modifier.clickable {
-                        val sendIntent: Intent = Intent().apply {
-                            action = Intent.ACTION_SEND
-                            putExtra(Intent.EXTRA_TEXT, "发现一个好用的照片清理 App：清图，快来试试吧！")
-                            type = "text/plain"
-                        }
-                        val shareIntent = Intent.createChooser(sendIntent, null)
-                        context.startActivity(shareIntent)
                     }
                 )
             }

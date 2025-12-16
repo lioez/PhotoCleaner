@@ -28,7 +28,7 @@ jobs:
         run: ./gradlew assembleRelease
 
       # 为了让 Release 包可安装，我们需要签名。
-      # 这里演示生成一个临时的 Keystore 进行签名（仅用于开源分发，生产环境请使用 Secrets）
+      # 请确保在 GitHub Secrets 中配置了 SIGNING_KEY, ALIAS, KEY_STORE_PASSWORD, KEY_PASSWORD
       - name: Sign Release APK
         id: sign_app
         uses: r0adkll/sign-android-release@v1
@@ -38,34 +38,9 @@ jobs:
           alias: ${{ secrets.ALIAS }}
           keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
-        continue-on-error: true # 如果没有配置 Secrets，这一步会失败，我们允许它失败并回退到使用 Debug 签名
-
-      # 如果上面的签名失败（用户没配 Secrets），我们手动用 Debug Keystore 签一个名，保证能安装
-      - name: Sign with Debug Key (Fallback)
-        if: steps.sign_app.outcome == 'failure' || steps.sign_app.outcome == 'skipped'
-        run: |
-          # 生成一个临时的 debug keystore
-          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          # 使用 apksigner (build-tools) 签名
-          # 先找到 build-tools 路径
-          BUILD_TOOLS_VERSION=$(ls $ANDROID_HOME/build-tools/ | sort -r | head -n 1)
-          APKSIGNER=$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION/apksigner
-
-          # 对未签名的 APK 进行签名
-          $APKSIGNER sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android --out app/build/outputs/apk/release/PhotoCleaner-release-signed.apk app/build/outputs/apk/release/app-release-unsigned.apk || \
-          $APKSIGNER sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android --out app/build/outputs/apk/release/PhotoCleaner-release-signed.apk app/build/outputs/apk/release/app-release.apk
 
       - name: Rename APK
-        run: |
-          # 尝试找到已签名的 APK 并重命名为统一名称
-          if [ -f app/build/outputs/apk/release/app-release-signed.apk ]; then
-            mv app/build/outputs/apk/release/app-release-signed.apk PhotoCleaner.apk
-          elif [ -f app/build/outputs/apk/release/PhotoCleaner-release-signed.apk ]; then
-            mv app/build/outputs/apk/release/PhotoCleaner-release-signed.apk PhotoCleaner.apk
-          else
-            # 如果前面的步骤都出了问题，直接找存在的 APK
-            find app/build/outputs/apk/release -name "*.apk" -exec cp {} PhotoCleaner.apk \;
-          fi
+        run: mv ${{ steps.sign_app.outputs.signedFile }} PhotoCleaner.apk
 
       - name: Create Release
         uses: softprops/action-gh-release@v1

@@ -29,6 +29,7 @@ import com.example.photocleaner.data.Photo
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.activity.compose.BackHandler
+import android.widget.Toast
 
 class MainActivity : ComponentActivity() {
 
@@ -85,17 +86,35 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     when (currentScreen) {
-                        0 -> SwipeScreen(
-                            viewModel = viewModel,
-                            onTrashClick = { currentScreen = 1 },
-                            onInfoClick = { currentScreen = 3 },
-                            themeMode = themeMode,
-                            onThemeChange = { themeMode = it },
-                            onViewOriginal = { photo ->
-                                viewingPhoto = photo
-                                currentScreen = 4
+                        0 -> {
+                            // 双击返回键退出确认
+                            var lastBackPressTime by remember { mutableStateOf(0L) }
+                            BackHandler {
+                                val currentTime = System.currentTimeMillis()
+                                if (currentTime - lastBackPressTime < 2000) {
+                                    // 2秒内再次按返回键，退出应用
+                                    finish()
+                                } else {
+                                    lastBackPressTime = currentTime
+                                    Toast.makeText(
+                                        this@MainActivity,
+                                        "再按一次退出应用",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
                             }
-                        )
+                            SwipeScreen(
+                                viewModel = viewModel,
+                                onTrashClick = { currentScreen = 1 },
+                                onInfoClick = { currentScreen = 3 },
+                                themeMode = themeMode,
+                                onThemeChange = { themeMode = it },
+                                onViewOriginal = { photo ->
+                                    viewingPhoto = photo
+                                    currentScreen = 4
+                                }
+                            )
+                        }
                         1 -> {
                             BackHandler { currentScreen = 0 }
                             TrashReviewScreen(

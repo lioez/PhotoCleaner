@@ -140,6 +140,9 @@ class PhotoRepository(private val context: Context) {
         // 关键：告诉 MediaStore 我们要查询回收站里的东西
         val bundle = Bundle().apply {
             putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_ONLY)
+            // 按过期时间升序排序，即将删除的在前面
+            putStringArray(android.content.ContentResolver.QUERY_ARG_SORT_COLUMNS, arrayOf(MediaStore.Images.Media.DATE_EXPIRES))
+            putInt(android.content.ContentResolver.QUERY_ARG_SORT_DIRECTION, android.content.ContentResolver.QUERY_SORT_DIRECTION_ASCENDING)
         }
 
         try {

@@ -79,4 +79,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: PhotoCleaner.apk
-          generate_release_notes: true
+          body_path: CHANGELOG.md
